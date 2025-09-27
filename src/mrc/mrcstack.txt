@@ -1,0 +1,30 @@
+#include "mrcstack.h"
+#include <cfloat>
+#include <limits>
+#include <cuda.h>
+#include <cuda_runtime.h>
+
+void MrcStack::set(int x, int y, int z, float* data)
+{
+    size[0] = x;
+    size[1] = y;
+    size[2] = z;
+    projs = new float*[size[2]];
+    memset(projs, 0, sizeof(float*) * size[2]);
+    for(int i=0; i<size[2]; i++)
+	{	projs[i] = new float[size[0] * size[1]];
+	}
+    size_t tBytes = sizeof(float) * size[0] * size[1];
+    for(int i=0; i<size[2]; i++)
+    {
+        float* proj = projs[i];
+        float* projofdata = data + i * size[0] * size[1];
+        cudaMemcpy(proj, projofdata, tBytes, cudaMemcpyDefault);
+    }
+}
+
+float* MrcStack::GetFrame(int iProj)
+{
+	if(iProj < 0 || iProj >= size[2]) return 0L; //如果选取第iproj张投影数目不对，则退出
+	return projs[iProj];
+}
