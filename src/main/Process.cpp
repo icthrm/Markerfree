@@ -36,13 +36,34 @@ void Process::DoIt(options &opt, SysInfo &info)
     struct timeval start_time, end_time;
     gettimeofday(&start_time, nullptr);
 
-    ReadStack(opt, info);
-    
+    // ReadStack(opt, info);
+
+    int status = ReadStack(opt, info);
+
+    // 🔥 如果读取失败，必须立即所有 rank 全部退出
+    if (status != 0)
+    {
+        if (info.id == 0)
+            printf("[Abort] DoIt() stopped due to input file loading failure.\n");
+
+        return; // ❗❗立刻退出，不再跑下面所有步骤
+    }
+
     Geometry geo;
     geo.offset = opt.offset;  //表示倾斜角偏移
     geo.pitch_angle = opt.pitch_angle;   //表示倾斜轴偏移角
     geo.zshift = opt.zshift;  //表示z轴偏移   
     ReadAngles(p_angles, opt.angle);
+
+    bool angle_ok = ReadAngles(p_angles, opt.angle);
+    if (!angle_ok)
+    {
+        if (info.id == 0)
+            printf("[Error] Cannot open angle file: %s\n", opt.angle);
+
+        printf("[Abort] DoIt() stopped due to angle file loading failure.\n");
+        return;
+    }
 
     mPreprocess();  //图像预处理
 
@@ -68,37 +89,83 @@ void Process::DoIt(options &opt, SysInfo &info)
     // MPI_Barrier(MPI_COMM_WORLD);
 }
 
+// int Process::ReadStack(options &opt, SysInfo &info)
+// {
+//     //MrcStackM projs;
+//     if (!projs.ReadFile(opt.input))  //打开mrc文件，将mpi句柄赋给projs的参数mpifile
+//     {
+//         printf("File %s cannot access.\n", opt.input);
+
+//         return -1;
+//     }
+
+//     if (info.id == 0)
+//     {
+//         projs.ReadHeader();
+//     }
+//     MPI_Bcast(&(projs.header), sizeof(MRCheader), MPI_CHAR, 0, MPI_COMM_WORLD);
+
+//     preprojs.InitializeHeader(projs.X(), projs.Y(), projs.Z());
+//     preprojs.SetSize(projs.X(), projs.Y(), projs.Z()); 
+//     // std::string bufFilePath = extractParentFolder(opt.output) + "/buf.mrc";
+
+//     char absolutePath[PATH_MAX];
+//     realpath(opt.output, absolutePath);      // opt.output 已经是 C 风格字符串
+//     std::string dir = dirname(absolutePath); // 需要 #include <libgen.h>
+//     std::string bufFilePath = std::string(dir) + "/buf.mrc";
+
+//     preprojs.WriteToFile(bufFilePath.c_str());
+
+//     if (info.id == 0)
+//     {
+//         preprojs.WriteHeader();
+//     }
+
+//     return 0;
+// }
+
 int Process::ReadStack(options &opt, SysInfo &info)
 {
-    //MrcStackM projs;
-    if (!projs.ReadFile(opt.input))  //打开mrc文件，将mpi句柄赋给projs的参数mpifile
-    {
-        printf("File %s cannot access.\n", opt.input);
+    int status = 0; // 0 表示正常，负值表示错误
 
-        return -1;
+    // Rank 0 负责读文件
+    if (info.id == 0)
+    {
+        if (!projs.ReadFile(opt.input))
+        {
+            printf("[Error] Cannot open input file: %s\n", opt.input);
+            status = -1;
+        }
+    }
+
+    // 广播文件读取状态给所有 rank
+    MPI_Bcast(&status, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    if (status != 0)
+    {
+        if (info.id == 0)
+            printf("[Abort] Input stack loading failed. Please check the file path.\n");
+        return status;
     }
 
     if (info.id == 0)
-    {
         projs.ReadHeader();
-    }
+
     MPI_Bcast(&(projs.header), sizeof(MRCheader), MPI_CHAR, 0, MPI_COMM_WORLD);
 
     preprojs.InitializeHeader(projs.X(), projs.Y(), projs.Z());
-    preprojs.SetSize(projs.X(), projs.Y(), projs.Z()); 
-    // std::string bufFilePath = extractParentFolder(opt.output) + "/buf.mrc";
+    preprojs.SetSize(projs.X(), projs.Y(), projs.Z());
 
+    // 构造 buf.mrc 的绝对路径
     char absolutePath[PATH_MAX];
-    realpath(opt.output, absolutePath);      // opt.output 已经是 C 风格字符串
-    std::string dir = dirname(absolutePath); // 需要 #include <libgen.h>
-    std::string bufFilePath = std::string(dir) + "/buf.mrc";
+    realpath(opt.output, absolutePath);
+    std::string dir = dirname(absolutePath);
+    std::string bufFilePath = dir + "/buf.mrc";
 
     preprojs.WriteToFile(bufFilePath.c_str());
 
     if (info.id == 0)
-    {
         preprojs.WriteHeader();
-    }
 
     return 0;
 }
@@ -206,6 +273,7 @@ void Process::mProjAlign(Geometry &geo, options &opt)
     ProjAlign projalign;
     CalcTIltAxis rotate;
     //projalign.outfile=opt.output;
+    projalign.SetNProj(opt.nProj);
     projalign.Setup(preprojs, param, p_angles, geo.zshift, opt.AlignZ);   
     // projalign.test(); 
     float fRange = 20.0f;

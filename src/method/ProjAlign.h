@@ -17,6 +17,11 @@ class ProjAlign
         void Setsize(bool exchange);
         float DoIt();
         void test();
+        void SetNProj(int v)
+        {
+            m_calcreproj.SetNProj(v);
+        }
+
     public:
         int thickness;
         float m_afMaskSize[2];

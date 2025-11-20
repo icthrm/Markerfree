@@ -237,11 +237,15 @@ void CalcReprojFBP::FindProjRange(std::vector<float> angles, bool* SkipProjs)
 		iend = i;
 	}//找到最后一个符合要求的序号
 	// if((iend - istart) > 9) iend = istart + 9;
-    if((iend - istart) > 9) 
+	int nproj = nProj - 1;
+	// std::cout << "nProj:" << nproj << std::endl;
+	if ((iend - istart) > nproj)
 	{
 		int iZeroTilt = GetFrameIdxFromTilt(numprojs, angles, 0.0f);
-		if(m_iProj < iZeroTilt) iend = istart + 9;
-		else istart = iend - 9;
+		if(m_iProj < iZeroTilt)
+			iend = istart + nproj;
+		else
+			istart = iend - nproj;
 	}
 	ProjRange[0] = istart;
 	ProjRange[1] = iend;

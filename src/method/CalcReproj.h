@@ -48,6 +48,7 @@ class CalcReprojFBP
         void Setup(int* rprojsize, int ivolZ, int num, std::vector<float> angles);
         void DoIt(float* corrproj, bool* SKipProjs, int iProj, float* fReproj);
         void Clean();
+        void SetNProj(int v) { nProj = v; }
     private:
         void FindProjRange(std::vector<float> angles, bool* SKipProjs);
         void GetSinogram(int y);
@@ -59,6 +60,7 @@ class CalcReprojFBP
         std::vector<float> angles;
         int projsize[2];
         int numprojs;
+        int nProj = 10;
         float* fSinogram;
         float* TiltAngles;
         int m_aiProjSize[2];
