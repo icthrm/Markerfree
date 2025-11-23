@@ -127,6 +127,7 @@ void SaveParam::GetParam(int bin, int mode, bool inv)
     char* pcOutSlash = strrchr(filename, '/');
 //	if(pcOutSlash == 0L) printf("Error output path");
 
+
 	if(mode == 0){
 		char* pcMrc = strstr(filename, ".mrc");
 		if(pcMrc == 0L) 
