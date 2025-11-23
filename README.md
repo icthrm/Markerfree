@@ -64,6 +64,10 @@ Tilt angle filename.
 
 Geometry information: offset, tilt axis angle, z-axis offset, thickness, projection matching reconstruction thickness, output image downsampling ratio, GPU ID (default: 0 if only one GPU is available).
 
+`-NPROJ (-p) <Number of projections>`
+
+The number of images used during the projection matching phase defaults to 10. Users can adjust this setting as needed, though the default value suffices in most cases.
+
 
 `-Savemode(-s) <save_format>`
 
@@ -80,7 +84,7 @@ Display help information.
 The following example demonstrates alignment using projection matching with a thickness of 300:
 
 ```bash
-./Markerfree -i /data/BBb.st -o /data/alignresult.mrc -a /data/BBb.rawtlt -g 0,0,0,0,300,1,0 -s 0
+./Markerfree -i /data/BBb.st -o /data/alignresult.mrc -a /data/BBb.rawtlt -g 0,0,0,0,300,1,0 -p 10 -s 0
 ```
 
 
